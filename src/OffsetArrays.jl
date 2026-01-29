@@ -396,7 +396,8 @@ Base.reshape(A::OffsetArray, inds::Dims) = _reshape_nov(A, inds)
 if VERSION < v"1.10.7"
     # the specialized reshape(parent::AbstractVector, ::Tuple{Colon}) is available in Base at least on this version
     Base.reshape(A::OffsetVector, ::Tuple{Colon}) = A
-    Base.reshape(A::OffsetArray, inds::Tuple{Vararg{Union{Integer,Colon}}}) = _reshape_nov(A, inds)
+    # Keep Int here (not Integer) to avoid method ambiguity with Base on older Julia versions
+    Base.reshape(A::OffsetArray, inds::Tuple{Vararg{Union{Int,Colon}}}) = _reshape_nov(A, inds)
 end
 
 # permutedims in Base does not preserve axes, and can not be fixed in a non-breaking way
