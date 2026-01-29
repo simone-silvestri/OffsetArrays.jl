@@ -459,9 +459,10 @@ Base.Int(a::WeirdInteger) = a
         ]
 
         offsets = size.(one_based_axes[1], 1)
-        offsets_big = map(big, offsets)
+        # Test with different integer offset types (Int8, Int16, Int32, Int64, Int128, BigInt)
+        offsets_all = [map(T, offsets) for T in (Int8, Int16, Int32, Int64, Int128, BigInt)]
 
-        for inds in Any[offsets, offsets_big, one_based_axes...]
+        for inds in Any[offsets_all..., one_based_axes...]
             # test indices API
             a = OffsetVector{Float64}(undef, inds)
             @test eltype(a) === Float64
@@ -489,7 +490,7 @@ Base.Int(a::WeirdInteger) = a
         end
 
         # nested OffsetVectors
-        for inds in Any[offsets, offsets_big]
+        for inds in offsets_all
             a = OffsetVector{Float64}(undef, inds)
             b = OffsetVector(a, inds); b2 = OffsetVector(a, inds...);
             @test eltype(b) === eltype(b2) === Float64
@@ -653,9 +654,10 @@ Base.Int(a::WeirdInteger) = a
         ]
 
         offsets = size.(one_based_axes[1], 1)
-        offsets_big = map(big, offsets)
+        # Test with different integer offset types (Int8, Int16, Int32, Int64, Int128, BigInt)
+        offsets_all = [map(T, offsets) for T in (Int8, Int16, Int32, Int64, Int128, BigInt)]
 
-        for inds in Any[offsets, offsets_big, one_based_axes...]
+        for inds in Any[offsets_all..., one_based_axes...]
             # test API
             a = OffsetMatrix{Float64}(undef, inds)
             ax = (IdOffsetRange(Base.OneTo(4), 0), IdOffsetRange(Base.OneTo(3), 0))
@@ -682,7 +684,7 @@ Base.Int(a::WeirdInteger) = a
         @test_throws Union{ArgumentError, ErrorException} OffsetMatrix{Float64}(undef, 2, -2) # only positive numbers works
 
         # nested OffsetMatrices
-        for inds in Any[offsets, offsets_big]
+        for inds in offsets_all
             a = OffsetMatrix{Float64}(undef, inds)
             b = OffsetMatrix(a, inds); b2 = OffsetMatrix(a, inds...);
             @test eltype(b) === eltype(b2) === Float64
@@ -857,9 +859,9 @@ Base.Int(a::WeirdInteger) = a
         # ndim of an OffsetArray should match that of the parent
         @test_throws TypeError OffsetArray{Float64,3,Matrix{Float64}}
 
-        # should throw a TypeError if the offsets can not be converted to Ints
-        # this test does not work anymore?
-        @test_throws TypeError OffsetVector{Int,Vector{Int}}(zeros(Int,2), (WeirdInteger(1),))
+        # should throw an error if the offset type doesn't support proper arithmetic operations
+        # (previously threw TypeError when converting to Int, now throws during overflow_check)
+        @test_throws Exception OffsetVector{Int,Vector{Int}}(zeros(Int,2), (WeirdInteger(1),))
     end
 
     @testset "custom range types" begin

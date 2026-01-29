@@ -112,15 +112,30 @@ julia> OffsetArray(a, OffsetArrays.Origin(0)) # set the origin to zero along eac
 struct OffsetArray{T, N, AA<:AbstractArray{T,N}, I<:Integer} <: AbstractArray{T, N}
     parent::AA
     offsets::NTuple{N,I}
-    @inline function OffsetArray{T, N, AA}(parent::AA, offsets::NTuple{N, I}; checkoverflow=true) where {T, N, AA<:AbstractArray{T,N}, I<:Integer}
+    # Inner constructor with all 4 type parameters bound
+    @inline function OffsetArray{T, N, AA, I}(parent::AA, offsets::NTuple{N, I}; checkoverflow=true) where {T, N, AA<:AbstractArray{T,N}, I<:Integer}
         # allocation of `map` on tuple is optimized away
         checkoverflow && map(overflow_check, axes(parent), offsets)
         new{T, N, AA, I}(parent, offsets)
     end
-    #special case of a 0-dimensional array, offsets do not make sense here
-    @inline function OffsetArray{T, N, AA}(parent::AA, offsets::Tuple{}; checkoverflow=true) where {T, N, AA<:AbstractArray{T,0}}
-        new{T, N, AA, Int}(parent, offsets)
+    # Special case of a 0-dimensional array, offsets do not make sense here
+    @inline function OffsetArray{T, N, AA, I}(parent::AA, offsets::Tuple{}; checkoverflow=true) where {T, N, AA<:AbstractArray{T,0}, I<:Integer}
+        new{T, N, AA, I}(parent, offsets)
     end
+end
+
+# Helper to get the element type of an offset tuple
+_offset_eltype(::Tuple{I, Vararg{I}}) where {I<:Integer} = I
+_offset_eltype(::Tuple{}) = Int
+
+# Outer constructor that infers I from the offsets - for backwards compatibility with 3-param calls
+@inline function OffsetArray{T, N, AA}(parent::AA, offsets::NTuple{N, <:Integer}; checkoverflow=true) where {T, N, AA<:AbstractArray{T,N}}
+    I = _offset_eltype(offsets)
+    OffsetArray{T, N, AA, I}(parent, offsets; checkoverflow=checkoverflow)
+end
+# Special case for 0-dimensional arrays with 3-param call
+@inline function OffsetArray{T, N, AA}(parent::AA, offsets::Tuple{}; checkoverflow=true) where {T, N, AA<:AbstractArray{T,0}}
+    OffsetArray{T, N, AA, Int}(parent, offsets; checkoverflow=checkoverflow)
 end
 
 """
