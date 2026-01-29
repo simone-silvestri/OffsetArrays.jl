@@ -435,6 +435,10 @@ Base.Int(a::WeirdInteger) = a
         @test a === OffsetArray(a, ())
         @test_throws ArgumentError OffsetArray(a, 0)
         @test_throws ArgumentError OffsetArray(a0, 0)
+        # Test 0-dimensional array with explicit type parameters (coverage for 0-dim constructors)
+        b = OffsetArray{Int, 0, typeof(a0)}(a0, ())
+        @test b[] == 3
+        @test axes(b) == ()
     end
 
     @testset "OffsetVector" begin

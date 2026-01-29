@@ -135,7 +135,7 @@ _offset_eltype(::Tuple{}) = Int
 end
 # Special case for 0-dimensional arrays with 3-param call
 @inline function OffsetArray{T, N, AA}(parent::AA, offsets::Tuple{}; checkoverflow=true) where {T, N, AA<:AbstractArray{T,0}}
-    OffsetArray{T, N, AA, Int}(parent, offsets; checkoverflow=checkoverflow)
+    OffsetArray{T, N, AA, _offset_eltype(offsets)}(parent, offsets; checkoverflow=checkoverflow)
 end
 
 """
