@@ -476,7 +476,6 @@ Base.copy(A::OffsetArray) = parent_call(copy, A)
 
 Base.strides(A::OffsetArray) = strides(parent(A))
 Base.elsize(::Type{OffsetArray{T,N,A,I}}) where {T,N,A,I} = Base.elsize(A)
-Base.elsize(::Type{OffsetArray{T,N,A}}) where {T,N,A} = Base.elsize(A)
 Base.cconvert(P::Type{Ptr{T}}, A::OffsetArray{T}) where {T} = Base.cconvert(P, parent(A))
 if VERSION < v"1.11-"
     @inline Base.unsafe_convert(::Type{Ptr{T}}, A::OffsetArray{T}) where {T} = Base.unsafe_convert(Ptr{T}, parent(A))
