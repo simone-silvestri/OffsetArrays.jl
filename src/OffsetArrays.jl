@@ -547,7 +547,7 @@ end
 # An OffsetUnitRange{Int} has an equivalent IdOffsetRange with the same values and axes,
 # something similar also holds for OffsetUnitRange{BigInt}
 # We may replace the former with the latter in an indexing operation to obtain a performance boost
-@inline function Base.to_index(r::OffsetUnitRange{<:Union{Integer,BigInt}})
+@inline function Base.to_index(r::OffsetUnitRange{<:Integer})
     of = first(axes(r,1)) - 1
     IdOffsetRange(_subtractoffset(parent(r), of), of)
 end
