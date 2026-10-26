@@ -139,14 +139,14 @@ Notice our use of the `eachindex` function which does not assume that the given 
 
 ## Custom offset array types
 
-Packages that need to store the offsets differently (e.g. in a narrower integer type, or in the type parameters themselves), may subtype `OffsetArrays.AbstractOffsetArray{T,N}`. Such a type needs to define `Base.parent`, `OffsetArrays.offsets` and `OffsetArrays.parenttype`, and it inherits the indexing, axes and printing machinery that is defined for `AbstractOffsetArray`. The offsets it stores are not validated by `OffsetArrays`: its constructor is responsible for checking that they can be added to the axes of the parent without overflow, for which `OffsetArrays.overflow_check` may be used.
+Packages that need to store the offsets differently (e.g. in a narrower integer type, or in the type parameters themselves), may subtype `OffsetArrays.AbstractOffsetArray{T,N}`. Such a type needs to define `Base.parent`, `OffsetArrays.offsets` and `OffsetArrays.parenttype`, and it inherits the indexing, axes and printing machinery that is defined for `AbstractOffsetArray`. The offsets it stores are not validated by `OffsetArrays`: its constructor is responsible for checking that they can be added to the axes of the parent without overflow, which constructing `OffsetArray(parent, offsets)` does, as in the example below.
 
 ```jldoctest; setup = :(using OffsetArrays)
 julia> struct Int8OffsetArray{T,N,AA<:AbstractArray{T,N}} <: OffsetArrays.AbstractOffsetArray{T,N}
            parent::AA
            offsets::NTuple{N,Int8}
            function Int8OffsetArray(parent::AA, offsets::NTuple{N,Int8}) where {T,N,AA<:AbstractArray{T,N}}
-               map(OffsetArrays.overflow_check, axes(parent), offsets)
+               OffsetArray(parent, offsets)
                new{T,N,AA}(parent, offsets)
            end
        end
@@ -169,4 +169,4 @@ julia> sum(A)
 21
 ```
 
-Operations that rebuild the wrapper around a new parent array (`copy`, `zero`, `map(T, A)`, indexing with a `Colon` along every dimension, and `Adapt.adapt`) return an `OffsetArray` unless the type extends `OffsetArrays.unwrap`. Every other operation that produces a new array with offset axes (`similar(A)`, broadcasting, indexing with an offset range, `AbstractArray{T}(A)`, `convert`, `reshape` to offset axes) returns an `OffsetArray`, while results with 1-based axes (`similar(A, T, dims)`, indexing with a 1-based range, `A[:]`, `vec`, `collect`, `reshape` to dimensions) have the type of the parent's result, and `similar(::Type{S}, dims)` on the custom type allocates an `Array`, as it does for `OffsetArray`. Wrapping a custom type in an `OffsetArray` discards the custom wrapper and collates the offsets. The specialisations for `OffsetVector`s that wrap ranges (indexing with an offset range, `step`, list-style reductions, compact printing) do not apply to custom types wrapping a range, which fall back to the generic `AbstractArray` methods.
+Operations that rebuild the wrapper around a new parent array (`copy`, `zero`, `map(T, A)`, indexing with a `Colon` along every dimension, and `Adapt.adapt`) return an `OffsetArray`; a custom type that should keep its own type through them defines these methods itself. Every other operation that produces a new array with offset axes (`similar(A)`, broadcasting, indexing with an offset range, `AbstractArray{T}(A)`, `convert`, `reshape` to offset axes) returns an `OffsetArray`, while results with 1-based axes (`similar(A, T, dims)`, indexing with a 1-based range, `A[:]`, `vec`, `collect`, `reshape` to dimensions) have the type of the parent's result, and `similar(::Type{S}, dims)` on the custom type allocates an `Array`, as it does for `OffsetArray`. Wrapping a custom type in an `OffsetArray` discards the custom wrapper and collates the offsets. The specialisations for `OffsetVector`s that wrap ranges (indexing with an offset range, `step`, list-style reductions, compact printing) do not apply to custom types wrapping a range, which fall back to the generic `AbstractArray` methods.

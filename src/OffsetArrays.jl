@@ -13,7 +13,7 @@ export OffsetArray, OffsetMatrix, OffsetVector
 # because the keyword is a syntax error on older Julia versions
 if VERSION >= v"1.11.0-DEV.469"
     eval(Meta.parse("public Origin, IdOffsetRange, no_offset_view, AxisConversionStyle, SingleRange, TupleOfRanges, center, centered"))
-    eval(Meta.parse("public AbstractOffsetArray, AbstractOffsetVector, AbstractOffsetMatrix, offsets, parenttype, unwrap, overflow_check"))
+    eval(Meta.parse("public AbstractOffsetArray, AbstractOffsetVector, AbstractOffsetMatrix, offsets, parenttype"))
 end
 
 const IIUR = IdentityUnitRange{<:AbstractUnitRange{<:Integer}}
@@ -46,13 +46,18 @@ A subtype `S` must define three methods:
 `parent(a::AbstractArray) = a` in `Base`, so that an incomplete subtype fails loudly instead of recursing or
 silently indexing itself.
 
-A subtype may additionally extend [`OffsetArrays.unwrap`](@ref) to retain its own type through the operations
-that rebuild the wrapper around a new parent.
+Operations that produce a new array with offset axes return an `OffsetArray`: those that rebuild the wrapper around
+a new parent (`copy`, `zero`, `map(T, A)`, indexing with a `Colon` along every dimension, and `Adapt.adapt`), as well
+as `similar(A)`, broadcasting, indexing with an offset range, `AbstractArray{T}(A)`, `convert`, and `reshape` to offset
+axes. A subtype that should keep its own type through one of them defines the corresponding method. Results with
+1-based axes, such as `similar(A, T, dims)`, indexing with a 1-based range, `A[:]`, `vec`, `collect`, and `reshape` to
+dimensions, have the type of the parent's result. `similar(::Type{S}, dims)` on the type of a subtype allocates an
+`Array`, as it does for `OffsetArray`.
 
 `OffsetArrays` does not validate the offsets a subtype stores: `axes(A)` adds them to the axes of the parent
-without checking for integer overflow. A subtype's constructor is responsible for calling
-[`OffsetArrays.overflow_check`](@ref) on each axis of the parent and the corresponding offset if it wants the
-same guarantee as `OffsetArray`. (Wrapping a subtype in an `OffsetArray`, as below, does check the collated offsets.)
+without checking for integer overflow. A subtype's constructor is responsible for that check if it wants the same
+guarantee as `OffsetArray`; constructing `OffsetArray(parent, offsets)` performs it and throws an `OverflowError`.
+(Wrapping a subtype in an `OffsetArray`, as below, does check the collated offsets.)
 
 Wrapping an `AbstractOffsetArray` in an `OffsetArray` collates the offsets and discards the inner wrapper:
 `OffsetArray(A::S, offsets)` is an `OffsetArray` around `parent(A)`.
@@ -223,17 +228,7 @@ Type alias and convenience constructor for two-dimensional [`OffsetArray`](@ref)
 """
 const OffsetMatrix{T,AA<:AbstractMatrix{T}} = OffsetArray{T,2,AA}
 
-"""
-    OffsetArrays.overflow_check(r::AbstractUnitRange, offset::Integer)
-
-Throw an `OverflowError` if adding `offset` to the endpoints of the axis `r` would overflow an `Int`,
-and return `nothing` otherwise. The check is specified for axes with `Int` endpoints, which is what
-`OffsetArray` itself works with; any `Integer` offset is accepted.
-
-`OffsetArray` calls this on every axis of the parent when it is constructed. `OffsetArrays` does not
-validate the offsets stored by other subtypes of [`AbstractOffsetArray`](@ref OffsetArrays.AbstractOffsetArray),
-so their constructors should call it themselves if they want the same guarantee.
-"""
+# checks if the offset may be added to the range without overflowing
 function overflow_check(r::AbstractUnitRange, offset::Integer)
     Base.hastypemax(eltype(r)) || return nothing
     # This gives some performance boost https://github.com/JuliaLang/julia/issues/33273
@@ -405,21 +400,6 @@ end
 
 # Utils to translate a function to the parent while preserving offsets
 unwrap(x) = x, identity
-"""
-    OffsetArrays.unwrap(A)
-
-Return `(parent(A), rewrap)`, where `rewrap` restores the wrapper around an array that shares the axes
-of `parent(A)`. The default `rewrap` builds an `OffsetArray`. Subtypes of
-[`AbstractOffsetArray`](@ref OffsetArrays.AbstractOffsetArray) may extend this to retain their own type
-through the operations that go through it: `copy`, `zero`, `map(T, A)`, indexing with a `Colon` along every
-dimension, and `Adapt.adapt`.
-
-Every other operation that produces a new array with offset axes, such as `similar(A)`, broadcasting,
-indexing with an offset range, `AbstractArray{T}(A)`, `convert`, and `reshape` to offset axes, returns an
-`OffsetArray`. Results with 1-based axes, such as `similar(A, T, dims)`, indexing with a 1-based range,
-`A[:]`, `vec`, `collect`, and `reshape` to dimensions, have the type of the parent's result.
-`similar(::Type{S}, dims)` on the type of a subtype allocates an `Array`, as it does for `OffsetArray`.
-"""
 unwrap(x::AbstractOffsetArray) = parent(x), data -> OffsetArray(data, offsets(x), checkoverflow = false)
 function parent_call(f, x)
     parent, wrap_offset = unwrap(x)

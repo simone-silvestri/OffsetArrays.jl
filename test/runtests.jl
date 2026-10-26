@@ -52,7 +52,7 @@ end
     if VERSION >= v"1.11.0-DEV.469"
         for s in (:Origin, :IdOffsetRange, :no_offset_view, :AxisConversionStyle, :SingleRange, :TupleOfRanges,
                   :center, :centered, :AbstractOffsetArray, :AbstractOffsetVector, :AbstractOffsetMatrix,
-                  :offsets, :parenttype, :unwrap, :overflow_check)
+                  :offsets, :parenttype)
             @test Base.ispublic(OffsetArrays, s)
         end
     end
@@ -2792,8 +2792,8 @@ struct NarrowOffsetArray{T,N,AA<:AbstractArray{T,N},I<:Integer} <: OffsetArrays.
     parent::AA
     offsets::NTuple{N,I}
     function NarrowOffsetArray(parent::AA, offsets::NTuple{N,I}) where {T,N,AA<:AbstractArray{T,N},I<:Integer}
-        # OffsetArrays does not validate stored offsets, so the subtype's constructor checks for overflow
-        map(OffsetArrays.overflow_check, axes(parent), offsets)
+        # OffsetArrays does not validate stored offsets, so the subtype's constructor checks them through OffsetArray
+        OffsetArray(parent, offsets)
         new{T,N,AA,I}(parent, offsets)
     end
 end
@@ -2901,7 +2901,7 @@ Base.parent(A::NoOffsetsOffsetArray) = A.parent
         A = [1 3 5; 2 4 6]
         N = NarrowOffsetArray(A, (Int8(-1), Int8(-2)))
 
-        # operations that rewrap the parent return an OffsetArray unless `unwrap` is extended
+        # operations that rewrap the parent return an OffsetArray
         @test copy(N) isa OffsetArray
         @test copy(N) == N
         @test axes(copy(N)) === axes(N)
@@ -2934,7 +2934,7 @@ Base.parent(A::NoOffsetsOffsetArray) = A.parent
         @test reshape(N, 6) == vec(A)
         @test reshape(N, (2, 3)) == A
 
-        # Adapt rebuilds the wrapper through parent_call and reads the parent type through parenttype
+        # Adapt rebuilds the wrapper as an OffsetArray and reads the parent type through parenttype
         NA = adapt(Array, N)
         @test NA isa OffsetArray{Int,2}
         @test axes(NA) === axes(N)
