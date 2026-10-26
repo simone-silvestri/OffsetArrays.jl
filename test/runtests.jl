@@ -48,6 +48,14 @@ end
     if VERSION >= v"1.2"
         doctest(OffsetArrays, manual = false)
     end
+    # same version bound as the `public` declaration in src
+    if VERSION >= v"1.11.0-DEV.469"
+        for s in (:Origin, :IdOffsetRange, :no_offset_view, :AxisConversionStyle, :SingleRange, :TupleOfRanges,
+                  :center, :centered, :AbstractOffsetArray, :AbstractOffsetVector, :AbstractOffsetMatrix,
+                  :offsets, :parenttype, :unwrap, :overflow_check)
+            @test Base.ispublic(OffsetArrays, s)
+        end
+    end
 end
 
 @testset "IdOffsetRange" begin
@@ -2887,14 +2895,6 @@ Base.parent(A::NoOffsetsOffsetArray) = A.parent
         @test last(axes(P, 1)) == typemax(Int)
         @test_throws OverflowError NarrowOffsetArray(P, (Int8(2), Int8(0)))
         @test NarrowOffsetArray(P, (Int8(0), Int8(0))) isa NarrowOffsetArray
-
-        # the subtype interface is declared public (same version bound as the declaration in src)
-        if VERSION >= v"1.11.0-DEV.469"
-            for s in (:AbstractOffsetArray, :AbstractOffsetVector, :AbstractOffsetMatrix,
-                      :offsets, :parenttype, :unwrap, :overflow_check)
-                @test Base.ispublic(OffsetArrays, s)
-            end
-        end
     end
 
     @testset "wrapper-preserving operations" begin
